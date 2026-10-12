@@ -13,12 +13,12 @@ The CLI supports three optimisation modes:
 * ``max_sharpe`` - maximum-Sharpe portfolio (risk-free rate defaults to 0)
 * ``risk_constrained`` - target volatility (provide ``--target-vol``)
 
-Additional flags allow you to export the resulting weights to CSV, plot the efficient frontier, or run a rolling-window analysis.
+Additional flags allow you to export weights to CSV, plot the efficient frontier,
+or run a rolling-window analysis.
 """
 
 import argparse
 import sys
-from datetime import datetime
 
 # Package-relative imports
 from .portfolio_optimizer import (
@@ -108,9 +108,12 @@ def main(argv: list[str] | None = None) -> int:
         weights = minimum_variance_portfolio(cov)
     elif args.optimisation == "max_sharpe":
         logger.info(
-            "Running maximum-Sharpe optimisation (risk-free rate=%s)", args.risk_free_rate
+            "Running maximum-Sharpe optimisation (risk-free rate=%s)",
+            args.risk_free_rate,
         )
-        weights = maximum_sharpe_portfolio(returns, cov, risk_free_rate=args.risk_free_rate)
+        weights = maximum_sharpe_portfolio(
+            returns, cov, risk_free_rate=args.risk_free_rate
+        )
     else:  # risk_constrained
         if args.target_vol is None:
             logger.error("--target-vol is required for risk_constrained optimisation")
@@ -140,12 +143,19 @@ def main(argv: list[str] | None = None) -> int:
 
     if args.rolling_window:
         rw = rolling_window_weights(
-            prices, window=60, step=30, optimisation=args.optimisation, risk_free_rate=args.risk_free_rate
+            prices,
+            window=60,
+            step=30,
+            optimisation=args.optimisation,
+            risk_free_rate=args.risk_free_rate,
         )
-        logger.info("Latest rolling-window weights (%.2f%%):", rw.tail(1).iloc[0].sum() * 100)
+        logger.info(
+            "Latest rolling-window weights (%.2f%%):", rw.tail(1).iloc[0].sum() * 100
+        )
         logger.info("%s", rw.tail(1).T)
 
     return 0
+
 
 if __name__ == "__main__":
     sys.exit(main())

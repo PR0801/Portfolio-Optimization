@@ -22,12 +22,11 @@ jobs:
       - name: Lint with flake8
         run: |
           pip install flake8
-          flake8 portfolio_optimization
+          flake8 --max-line-length=88 portfolio_optimization tests
       - name: Format check with black
         run: |
           pip install black
-          black --check portfolio_optimization
+          black --check portfolio_optimization run_example.py tests
       - name: Run tests
         run: |
-          pip install pytest
           pytest -q

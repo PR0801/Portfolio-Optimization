@@ -26,4 +26,4 @@ COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/pytho
 ENV PATH="/usr/local/bin:${PATH}"
 
 # Default command – show help
-ENTRYPOINT ["portfolio‑optimise", "--help"]
+ENTRYPOINT ["portfolio-optimize", "--help"]

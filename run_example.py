@@ -5,7 +5,7 @@ Run with:
     python run_example.py
 """
 
-from portfolio_optimizer import (
+from portfolio_optimization import (
     download_price_data,
     compute_returns,
     minimum_variance_portfolio,
@@ -38,6 +38,8 @@ if __name__ == "__main__":
     plot_efficient_frontier(returns_df, cov_mat, num_points=30)
 
     # Rolling‑window analysis – 60‑day window, step every 30 days
-    rw_weights = rolling_window_weights(price_df, window=60, step=30, optimisation="max_sharpe")
+    rw_weights = rolling_window_weights(
+        price_df, window=60, step=30, optimisation="max_sharpe"
+    )
     print("\nLatest rolling‑window weights (max Sharpe):")
     print(rw_weights.tail(1).T)

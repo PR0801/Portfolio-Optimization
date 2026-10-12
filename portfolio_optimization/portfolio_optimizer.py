@@ -25,6 +25,7 @@ be executed directly or imported from ``run_example.py``.
 """
 
 import numpy as np
+import logging
 import pandas as pd
 import yfinance as yf
 from scipy.optimize import minimize
@@ -34,6 +35,7 @@ from typing import List, Tuple, Dict
 # ---------------------------------------------------------------------------
 # Data acquisition
 # ---------------------------------------------------------------------------
+
 
 def download_price_data(
     tickers: List[str],
@@ -77,9 +79,11 @@ def download_price_data(
     price = price.dropna(axis=1, how="any")
     return price
 
+
 # ---------------------------------------------------------------------------
 # Return & risk calculations
 # ---------------------------------------------------------------------------
+
 
 def compute_returns(prices: pd.DataFrame) -> pd.DataFrame:
     """Compute simple daily returns from price series.
@@ -90,8 +94,12 @@ def compute_returns(prices: pd.DataFrame) -> pd.DataFrame:
     returns = prices.pct_change().dropna()
     return returns
 
+
 def annualised_statistics(
-    weights: np.ndarray, returns: pd.DataFrame, cov_matrix: np.ndarray, periods_per_year: int = 252
+    weights: np.ndarray,
+    returns: pd.DataFrame,
+    cov_matrix: np.ndarray,
+    periods_per_year: int = 252,
 ) -> Tuple[float, float, float]:
     """Calculate portfolio expected return, volatility and Sharpe ratio.
 
@@ -113,26 +121,37 @@ def annualised_statistics(
     sharpe = exp_annual_ret / vol_annual if vol_annual != 0 else 0.0
     return exp_annual_ret, vol_annual, sharpe
 
+
 def portfolio_metrics(weights: np.ndarray, returns: pd.DataFrame) -> Dict[str, float]:
     """Convenient wrapper returning a dict of common metrics."""
     cov = returns.cov().values
     exp_ret, vol, sharpe = annualised_statistics(weights, returns, cov)
     return {"return": exp_ret, "volatility": vol, "sharpe": sharpe}
 
+
 # ---------------------------------------------------------------------------
 # Optimization helpers
 # ---------------------------------------------------------------------------
 
+
 def _portfolio_variance(weights: np.ndarray, cov_matrix: np.ndarray) -> float:
     return np.dot(weights.T, np.dot(cov_matrix, weights))
 
-def _negative_sharpe(weights: np.ndarray, returns: pd.DataFrame, cov_matrix: np.ndarray, risk_free_rate: float = 0.0) -> float:
+
+def _negative_sharpe(
+    weights: np.ndarray,
+    returns: pd.DataFrame,
+    cov_matrix: np.ndarray,
+    risk_free_rate: float = 0.0,
+) -> float:
     port_ret, port_vol, _ = annualised_statistics(weights, returns, cov_matrix)
     sharpe = (port_ret - risk_free_rate) / port_vol if port_vol != 0 else 0.0
     return -sharpe
 
+
 def _weight_sum_constraint(weights: np.ndarray) -> float:
     return np.sum(weights) - 1.0
+
 
 def minimum_variance_portfolio(cov_matrix: np.ndarray) -> np.ndarray:
     """Return the weight vector of the global minimum‑variance portfolio.
@@ -156,7 +175,10 @@ def minimum_variance_portfolio(cov_matrix: np.ndarray) -> np.ndarray:
         raise RuntimeError("Minimum variance optimisation failed: " + result.message)
     return result.x
 
-def maximum_sharpe_portfolio(returns: pd.DataFrame, cov_matrix: np.ndarray, risk_free_rate: float = 0.0) -> np.ndarray:
+
+def maximum_sharpe_portfolio(
+    returns: pd.DataFrame, cov_matrix: np.ndarray, risk_free_rate: float = 0.0
+) -> np.ndarray:
     """Return the weight vector that maximises the Sharpe ratio.
 
     Short‑selling is prohibited by default (bounds 0‑1). Adjust ``bounds`` if
@@ -177,6 +199,7 @@ def maximum_sharpe_portfolio(returns: pd.DataFrame, cov_matrix: np.ndarray, risk
     if not result.success:
         raise RuntimeError("Maximum Sharpe optimisation failed: " + result.message)
     return result.x
+
 
 def risk_constrained_portfolio(
     returns: pd.DataFrame,
@@ -210,9 +233,11 @@ def risk_constrained_portfolio(
         raise RuntimeError("Risk‑constrained optimisation failed: " + result.message)
     return result.x
 
+
 # ---------------------------------------------------------------------------
 # Rolling‑window analysis
 # ---------------------------------------------------------------------------
+
 
 def rolling_window_weights(
     prices: pd.DataFrame,
@@ -258,9 +283,11 @@ def rolling_window_weights(
     )
     return weights_df
 
+
 # ---------------------------------------------------------------------------
 # Visualisation helpers
 # ---------------------------------------------------------------------------
+
 
 def plot_efficient_frontier(
     returns: pd.DataFrame,
@@ -314,6 +341,7 @@ def plot_efficient_frontier(
     plt.grid(True)
     plt.show()
 
+
 # ---------------------------------------------------------------------------
 # Example usage (executed when run as script)
 # ---------------------------------------------------------------------------
@@ -348,9 +376,9 @@ if __name__ == "__main__":
 # ---------------------------------------------------------------------------
 # Logging configuration
 # ---------------------------------------------------------------------------
-import logging
-
 logger = logging.getLogger(__name__)
-# If the root logger has no handlers, configure a basic one. This avoids duplicate configs.
+# Configure a basic root logger only if no handlers are already present.
 if not logging.getLogger().handlers:
-    logging.basicConfig(level=logging.INFO, format='[%(asctime)s] %(levelname)s:%(name)s: %(message)s')
+    logging.basicConfig(
+        level=logging.INFO, format="[%(asctime)s] %(levelname)s:%(name)s: %(message)s"
+    )

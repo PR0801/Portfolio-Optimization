@@ -13,7 +13,10 @@ extend without breaking existing functionality.
 
 from typing import List
 
-def fetch_asset_data(tickers: List[str], start: str, end: str, asset_type: str = "equity"):
+
+def fetch_asset_data(
+    tickers: List[str], start: str, end: str, asset_type: str = "equity"
+):
     """Fetch price data for the given *asset_type*.
 
     Parameters
