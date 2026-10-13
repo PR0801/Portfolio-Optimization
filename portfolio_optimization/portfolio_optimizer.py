@@ -95,6 +95,87 @@ def compute_returns(prices: pd.DataFrame) -> pd.DataFrame:
     return returns
 
 
+def compute_correlation_matrix(returns: pd.DataFrame) -> pd.DataFrame:
+    """Return the pairwise correlation matrix for a returns DataFrame."""
+    return returns.corr().fillna(0.0)
+
+
+correlation_matrix = compute_correlation_matrix
+
+
+def value_at_risk(
+    returns: pd.Series | pd.DataFrame, confidence: float = 0.95
+) -> float | pd.Series:
+    """Estimate historical VaR as a positive loss at the chosen confidence.
+
+    For a single series, the result is the negative of the quantile at
+    ``1 - confidence``; for a DataFrame, the function is applied column-by-column.
+    """
+    if not 0.0 < confidence < 1.0:
+        raise ValueError("confidence must be between 0 and 1")
+
+    if isinstance(returns, pd.DataFrame):
+        return returns.apply(value_at_risk, confidence=confidence)
+
+    series = pd.Series(np.asarray(returns, dtype=float)).dropna()
+    if series.empty:
+        return 0.0
+
+    quantile = series.quantile(1.0 - confidence, interpolation="higher")
+    return float(max(0.0, -quantile))
+
+
+def maximum_drawdown(prices: pd.Series | pd.DataFrame) -> float | pd.Series:
+    """Compute the maximum drawdown for each series in a price DataFrame."""
+    if isinstance(prices, pd.DataFrame):
+        return prices.apply(maximum_drawdown)
+
+    series = pd.Series(np.asarray(prices, dtype=float)).dropna()
+    if series.empty:
+        return 0.0
+
+    running_peak = series.cummax()
+    drawdown = (series - running_peak) / running_peak
+    return float(-drawdown.min())
+
+
+def historical_stress_test(
+    prices: pd.DataFrame,
+    window: int = 30,
+    threshold: float = 0.05,
+) -> Dict[str, float | bool | pd.Timestamp | None]:
+    """Summarise the most stressed market window from recent price history.
+
+    The routine looks for the worst cumulative portfolio return over a rolling
+    window and compares it against a user-defined threshold. It also reports the
+    worst observed drawdown for the same price series.
+    """
+    if window <= 0:
+        raise ValueError("window must be positive")
+    if prices.empty:
+        raise ValueError("prices cannot be empty")
+
+    returns = compute_returns(prices)
+    if returns.empty:
+        raise ValueError("not enough price data to compute returns")
+
+    portfolio_returns = returns.mean(axis=1)
+    rolling_cumulative = portfolio_returns.rolling(window=window).sum()
+    worst_idx = rolling_cumulative.idxmin()
+    worst_window_return = float(rolling_cumulative.min())
+
+    worst_drawdown = float(maximum_drawdown(prices).max())
+    stress_regime = worst_window_return <= -threshold or worst_drawdown >= threshold
+
+    return {
+        "worst_window_return": worst_window_return,
+        "worst_drawdown": worst_drawdown,
+        "stress_regime": stress_regime,
+        "stress_window_start": worst_idx - pd.Timedelta(days=window - 1),
+        "stress_window_end": worst_idx,
+    }
+
+
 def annualised_statistics(
     weights: np.ndarray,
     returns: pd.DataFrame,

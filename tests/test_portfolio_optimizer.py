@@ -9,6 +9,10 @@ import pytest
 
 from portfolio_optimization import (
     compute_returns,
+    compute_correlation_matrix,
+    value_at_risk,
+    maximum_drawdown,
+    historical_stress_test,
     minimum_variance_portfolio,
     maximum_sharpe_portfolio,
     risk_constrained_portfolio,
@@ -61,3 +65,34 @@ def test_risk_constrained_portfolio(synthetic_prices):
     )
     assert pytest.approx(weights.sum(), rel=1e-6) == 1.0
     assert all(w >= 0 for w in weights)
+
+
+def test_compute_correlation_matrix(synthetic_prices):
+    returns = compute_returns(synthetic_prices)
+    corr = compute_correlation_matrix(returns)
+    assert corr.shape == (2, 2)
+    assert corr.loc["A", "A"] == pytest.approx(1.0)
+    assert corr.loc["B", "B"] == pytest.approx(1.0)
+
+
+def test_value_at_risk_and_maximum_drawdown():
+    returns = pd.Series([-0.10, -0.05, 0.02, 0.03, -0.12, 0.01])
+    assert value_at_risk(returns, confidence=0.95) == pytest.approx(0.10, rel=1e-6)
+
+    prices = pd.Series([100.0, 110.0, 90.0, 95.0, 80.0])
+    assert maximum_drawdown(prices) == pytest.approx(0.2727272727, rel=1e-6)
+
+
+def test_historical_stress_test():
+    prices = pd.DataFrame(
+        {
+            "A": [100, 110, 105, 98, 90, 85, 95, 88],
+            "B": [100, 102, 101, 99, 92, 90, 87, 84],
+        },
+        index=pd.date_range("2020-01-01", periods=8, freq="D"),
+    )
+    stress = historical_stress_test(prices, window=3, threshold=0.05)
+    assert "worst_window_return" in stress
+    assert "worst_drawdown" in stress
+    assert "stress_regime" in stress
+    assert stress["stress_regime"] is True
