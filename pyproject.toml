@@ -17,15 +17,17 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 dependencies = [
+    "fastapi",
     "numpy",
     "pandas",
     "scipy",
     "matplotlib",
+    "uvicorn[standard]",
     "yfinance",
 ]
 
 [project.optional-dependencies]
-test = ["pytest"]
+test = ["httpx", "pytest"]
 
 [tool.setuptools]
 packages = ["portfolio_optimization"]

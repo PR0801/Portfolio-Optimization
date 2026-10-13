@@ -160,18 +160,23 @@ def historical_stress_test(
         raise ValueError("not enough price data to compute returns")
 
     portfolio_returns = returns.mean(axis=1)
-    rolling_cumulative = portfolio_returns.rolling(window=window).sum()
+    window = min(window, len(portfolio_returns))
+    rolling_cumulative = (1.0 + portfolio_returns).rolling(
+        window=window, min_periods=window
+    ).apply(np.prod, raw=True) - 1.0
     worst_idx = rolling_cumulative.idxmin()
     worst_window_return = float(rolling_cumulative.min())
 
     worst_drawdown = float(maximum_drawdown(prices).max())
     stress_regime = worst_window_return <= -threshold or worst_drawdown >= threshold
+    end_position = portfolio_returns.index.get_loc(worst_idx)
+    start_position = max(0, end_position - window + 1)
 
     return {
         "worst_window_return": worst_window_return,
         "worst_drawdown": worst_drawdown,
         "stress_regime": stress_regime,
-        "stress_window_start": worst_idx - pd.Timedelta(days=window - 1),
+        "stress_window_start": portfolio_returns.index[start_position],
         "stress_window_end": worst_idx,
     }
 

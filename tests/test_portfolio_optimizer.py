@@ -6,6 +6,7 @@ These tests use synthetic data so they run quickly and deterministically.
 
 import pandas as pd
 import pytest
+from fastapi.testclient import TestClient
 
 from portfolio_optimization import (
     compute_returns,
@@ -17,6 +18,7 @@ from portfolio_optimization import (
     maximum_sharpe_portfolio,
     risk_constrained_portfolio,
 )
+from portfolio_optimization import web
 
 
 # Helper synthetic data – two assets with known statistics
@@ -96,3 +98,52 @@ def test_historical_stress_test():
     assert "worst_drawdown" in stress
     assert "stress_regime" in stress
     assert stress["stress_regime"] is True
+
+
+@pytest.mark.parametrize("strategy", ["min_variance", "max_sharpe", "risk_constrained"])
+def test_analyze_endpoint_returns_portfolio_results(
+    monkeypatch, synthetic_prices, strategy
+):
+    monkeypatch.setattr(
+        web,
+        "download_price_data",
+        lambda tickers, start, end: synthetic_prices[tickers],
+    )
+    payload = {
+        "tickers": ["A", "B"],
+        "start": "2020-01-01",
+        "end": "2020-01-06",
+        "strategy": strategy,
+    }
+    if strategy == "risk_constrained":
+        payload["target_volatility"] = 0.18
+
+    response = TestClient(web.app).post("/api/analyze", json=payload)
+
+    assert response.status_code == 200
+    result = response.json()
+    assert result["metadata"]["strategy"] == strategy
+    assert len(result["weights"]) == 2
+    assert sum(item["weight"] for item in result["weights"]) == pytest.approx(1.0)
+    assert result["metrics"]["maximum_drawdown"] >= 0.0
+    assert len(result["history"]) == len(synthetic_prices) - 1
+    assert {item["category"] for item in result["recommendations"]} == {
+        "strategy",
+        "concentration",
+        "diversification",
+        "downside",
+    }
+
+
+def test_analyze_endpoint_rejects_missing_risk_target():
+    response = TestClient(web.app).post(
+        "/api/analyze",
+        json={
+            "tickers": ["A", "B"],
+            "start": "2020-01-01",
+            "end": "2020-01-06",
+            "strategy": "risk_constrained",
+        },
+    )
+
+    assert response.status_code == 422

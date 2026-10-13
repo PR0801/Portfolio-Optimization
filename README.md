@@ -23,17 +23,34 @@ run_example.py
 tests/
 ```
 
-## Getting started
+## Run locally
 ```bash
-# Create a virtual environment (optional but recommended)
-python -m venv venv
-venv\Scripts\activate   # Windows
-
-# Install dependencies
-pip install -r requirements.txt
-
-# Run the example
-python run_example.py
+python -m venv .venv
+source .venv/bin/activate
+python -m pip install -e '.[test]'
+npm --prefix frontend ci
 ```
+
+Start the API and frontend in separate terminals:
+
+```bash
+python -m uvicorn portfolio_optimization.web:app --reload --port 8000
+npm --prefix frontend run dev
+```
+
+Open `http://localhost:5173` during development. The Vite server proxies API
+requests to FastAPI on port 8000. In the deployed container, FastAPI serves the
+built frontend and API together on port 8000.
+
+## Container usage
+```bash
+docker build -t portfolio-studio .
+docker run --rm -p 8000:8000 portfolio-studio
+```
+
+Then open `http://localhost:8000`. The image runs as a non-root user and exposes
+a health check at `/api/health`. Analysis requires outbound network access to
+download market data from yFinance. The command-line interface remains available
+as `portfolio-optimize` for scripted use.
 
 Feel free to extend the library with additional assets, constraints, or custom risk measures.

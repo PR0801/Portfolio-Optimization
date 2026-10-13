@@ -1,29 +1,40 @@
 # Dockerfile
-# Multi-stage build for the portfolio optimisation tool
-# Base image with Python 3.13 (official slim image)
-FROM python:3.13-slim AS builder
+FROM node:22-alpine AS frontend-builder
 
-# Set working directory
+WORKDIR /app/frontend
+COPY frontend/package.json frontend/package-lock.json ./
+RUN npm ci
+COPY frontend/ ./
+RUN npm run build
+
+FROM python:3.13-slim AS backend-builder
+
 WORKDIR /app
 
-# Copy only the necessary files for building
 COPY pyproject.toml README.md ./
 COPY portfolio_optimization/ ./portfolio_optimization/
 
-# Install build dependencies (pip, build-essential optional)
-RUN pip install --upgrade pip && \
-    pip install .
+RUN python -m pip install --no-cache-dir --prefix=/install .
 
-# Second stage – runtime image (smaller)
 FROM python:3.13-slim
 
 WORKDIR /app
 
-# Copy installed package from builder stage
-COPY --from=builder /usr/local/lib/python3.13/site-packages /usr/local/lib/python3.13/site-packages
+ENV PYTHONDONTWRITEBYTECODE=1 \
+    PYTHONUNBUFFERED=1 \
+    MPLBACKEND=Agg \
+    PORTFOLIO_STATIC_DIR=/app/frontend/dist
 
-# Ensure the entrypoint script is available
-ENV PATH="/usr/local/bin:${PATH}"
+RUN useradd --system --uid 10001 --create-home app
 
-# Default command – show help
-ENTRYPOINT ["portfolio-optimize", "--help"]
+COPY --from=backend-builder /install/ /usr/local/
+COPY --from=frontend-builder --chown=10001:10001 /app/frontend/dist ./frontend/dist
+
+USER 10001:10001
+
+EXPOSE 8000
+
+HEALTHCHECK --interval=30s --timeout=5s --start-period=15s --retries=3 \
+    CMD ["python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/health', timeout=3)"]
+
+CMD ["uvicorn", "portfolio_optimization.web:app", "--host", "0.0.0.0", "--port", "8000"]

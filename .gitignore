@@ -52,6 +52,9 @@ coverage.xml
 *.py,cover
 .hypothesis/
 .pytest_cache/
+frontend/node_modules/
+frontend/dist/
+frontend/*.tsbuildinfo
 
 # Jupyter Notebook
 .ipynb_checkpoints
